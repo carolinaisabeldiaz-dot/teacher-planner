@@ -757,22 +757,188 @@ select:focus {
   }
 }
 
+
+/* ===== CLOUD SYNC / AUTH ===== */
+.auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255,255,255,.92), transparent 30%),
+    radial-gradient(circle at 92% 12%, rgba(240,170,198,.48), transparent 28%),
+    linear-gradient(150deg, #fcecf3 0%, #f7d9e6 55%, #f2c9d9 100%);
+}
+.auth-card {
+  width: min(430px, 100%);
+  border: 1px solid rgba(255,255,255,.88);
+  border-radius: 24px;
+  padding: 24px;
+  background: rgba(255,255,255,.84);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 24px 70px rgba(112,56,78,.18);
+}
+.auth-heart {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+  border-radius: 16px;
+  background: #f8d7e4;
+  color: #be4f78;
+  font-size: 1.55rem;
+}
+.auth-card h2 { margin-bottom: 6px; }
+.auth-card .auth-copy { color: var(--muted); margin-bottom: 18px; line-height: 1.45; }
+.auth-card label { margin-bottom: 11px; }
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 14px;
+}
+.auth-message {
+  min-height: 20px;
+  margin: 12px 0 0;
+  font-size: .82rem;
+  color: #9b3f60;
+  line-height: 1.4;
+}
+.auth-note {
+  margin: 15px 0 0;
+  padding-top: 13px;
+  border-top: 1px solid #eed6df;
+  color: var(--muted);
+  font-size: .76rem;
+  line-height: 1.45;
+}
+.cloud-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid #efd4df;
+  border-radius: 999px;
+  background: rgba(255,255,255,.78);
+  color: #795564;
+  font-size: .76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #b9a8af;
+}
+.sync-badge.synced .sync-dot { background: #6faa76; }
+.sync-badge.saving .sync-dot { background: #d89a52; }
+.sync-badge.error .sync-dot { background: #c14d62; }
+.account-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.account-email {
+  max-width: 185px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: .74rem;
+}
+.cloud-banner {
+  display: none;
+  margin: -5px 0 14px;
+  padding: 9px 12px;
+  border: 1px solid #e9cfda;
+  border-radius: 12px;
+  background: rgba(255,255,255,.68);
+  color: #795564;
+  font-size: .78rem;
+}
+.cloud-banner.show { display: block; }
+
+@media (max-width: 820px) {
+  .topbar { align-items: stretch; }
+  .top-actions { justify-content: flex-start; }
+  .cloud-controls { width: 100%; }
+}
+@media (max-width: 560px) {
+  .auth-card { padding: 20px 16px; border-radius: 20px; }
+  .auth-actions { grid-template-columns: 1fr; }
+  .cloud-controls { display: grid; grid-template-columns: 1fr 1fr; }
+  .sync-badge { grid-column: 1 / -1; justify-content: center; }
+  .account-email { display: none; }
+}
+
 </style>
 </head>
 <body>
+
+  <section id="authGate" class="auth-gate">
+    <div class="auth-card">
+      <div class="auth-heart">♡</div>
+      <p class="eyebrow">CAROLINA'S CLOUD PLANNER</p>
+      <h2>Sign in to your planner</h2>
+      <p class="auth-copy">Use the same email and password on your Mac, iPad and phone. Your plans and reminders will follow you.</p>
+
+      <label>
+        Email
+        <input id="authEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" />
+      </label>
+
+      <label>
+        Password
+        <input id="authPassword" type="password" autocomplete="current-password" placeholder="At least 6 characters" />
+      </label>
+
+      <div class="auth-actions">
+        <button type="button" class="primary-btn" id="signInBtn">Sign in</button>
+        <button type="button" class="secondary-btn" id="signUpBtn">Create account</button>
+      </div>
+
+      <p id="authMessage" class="auth-message" aria-live="polite"></p>
+      <p class="auth-note">Your planner stays private to the account you sign in with. The pink planner still keeps a local copy on each device as a fallback.</p>
+    </div>
+  </section>
+
   <div class="app-shell">
     <header class="topbar">
       <div>
         <p class="eyebrow">MY ENGLISH TEACHER PLANNER ♡</p>
         <h1>Carolina's Planner</h1>
-        <p class="subtitle">My school planner · August–September 2026</p>
+        <p class="subtitle">Cloud sync · August–September 2026</p>
       </div>
 
       <div class="top-actions">
-        <button class="secondary-btn" id="todayBtn">Today</button>
-        <button class="secondary-btn" id="backupBtn">Backup</button>
+        <div class="cloud-controls">
+          <span id="syncBadge" class="sync-badge">
+            <span class="sync-dot"></span>
+            <span id="syncText">Connecting…</span>
+          </span>
+          <button class="secondary-btn" id="syncNowBtn">Sync now</button>
+          <button class="secondary-btn" id="todayBtn">Today</button>
+          <button class="secondary-btn" id="backupBtn">Backup</button>
+          <div class="account-menu">
+            <span id="accountEmail" class="account-email"></span>
+            <button class="secondary-btn" id="signOutBtn">Sign out</button>
+          </div>
+        </div>
       </div>
     </header>
+    <div id="cloudBanner" class="cloud-banner" aria-live="polite"></div>
 
     <nav class="view-tabs" aria-label="Planner views">
       <button id="monthTab" class="tab active">Monthly</button>
@@ -972,8 +1138,7 @@ select:focus {
         <button type="button" class="icon-btn" id="closeBackupBtn">✕</button>
       </div>
       <p class="muted">
-        This version can be edited directly from your iPad. For now, each device keeps its own saved copy.
-        Use Export / Import to transfer your planner until cloud sync is connected.
+        Your planner now syncs through your signed-in cloud account. Export / Import is still available as an extra personal backup.
       </p>
       <div class="backup-actions">
         <button id="exportBtn" class="primary-btn">Export planner backup</button>
@@ -1036,8 +1201,26 @@ const blockedDates = {
   "2026-08-14": "School Anniversary · No regular classes"
 };
 
+
 const STORAGE_KEY = "carolina-teacher-planner-v1";
 const REMINDER_KEY = "carolina-teacher-planner-reminders-v1";
+const LOCAL_UPDATED_KEY = "carolina-teacher-planner-local-updated-v1";
+
+const SUPABASE_URL = "https://kbapczvrqyuadenzcmte.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_XJCjtOCNwh0x1xvl-QxdMw_jFux2J05";
+const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
+
+let currentUser = null;
+let cloudSaveTimer = null;
+let cloudSaveInFlight = false;
+let cloudSaveQueued = false;
+let lastKnownCloudUpdatedAt = null;
 
 let plannerData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
 let remindersData = JSON.parse(localStorage.getItem(REMINDER_KEY) || "{}");
@@ -1078,8 +1261,137 @@ function gradeClass(course){
   return "admin";
 }
 function itemKey(d,item){ return `${dateKey(d)}|${item.start}|${item.course}`; }
-function saveData(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(plannerData)); }
-function saveReminders(){ localStorage.setItem(REMINDER_KEY, JSON.stringify(remindersData)); }
+function markLocalUpdated(){
+  localStorage.setItem(LOCAL_UPDATED_KEY, new Date().toISOString());
+}
+function saveData(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(plannerData));
+  markLocalUpdated();
+  scheduleCloudSave();
+}
+function saveReminders(){
+  localStorage.setItem(REMINDER_KEY, JSON.stringify(remindersData));
+  markLocalUpdated();
+  scheduleCloudSave();
+}
+
+function setSyncState(state, text){
+  const badge = $("syncBadge");
+  if(!badge) return;
+  badge.classList.remove("synced","saving","error");
+  if(state) badge.classList.add(state);
+  $("syncText").textContent = text;
+}
+function showCloudBanner(text){
+  const banner = $("cloudBanner");
+  if(!banner) return;
+  banner.textContent = text;
+  banner.classList.add("show");
+  window.clearTimeout(showCloudBanner._timer);
+  showCloudBanner._timer = window.setTimeout(()=>banner.classList.remove("show"), 3500);
+}
+function hasAnyLocalContent(){
+  return Object.keys(plannerData || {}).length > 0 || Object.keys(remindersData || {}).length > 0;
+}
+function localUpdatedMillis(){
+  const value = localStorage.getItem(LOCAL_UPDATED_KEY);
+  const ms = value ? Date.parse(value) : 0;
+  return Number.isFinite(ms) ? ms : 0;
+}
+function cloudUpdatedMillis(value){
+  const ms = value ? Date.parse(value) : 0;
+  return Number.isFinite(ms) ? ms : 0;
+}
+function scheduleCloudSave(){
+  if(!currentUser) return;
+  window.clearTimeout(cloudSaveTimer);
+  setSyncState("saving","Saving…");
+  cloudSaveTimer = window.setTimeout(()=>performCloudSave(), 650);
+}
+async function performCloudSave(){
+  if(!currentUser) return;
+  if(cloudSaveInFlight){
+    cloudSaveQueued = true;
+    return;
+  }
+  cloudSaveInFlight = true;
+  setSyncState("saving","Saving…");
+
+  const updatedAt = localStorage.getItem(LOCAL_UPDATED_KEY) || new Date().toISOString();
+  const payload = {
+    user_id: currentUser.id,
+    planner_data: plannerData || {},
+    reminders_data: remindersData || {},
+    updated_at: updatedAt
+  };
+
+  const { error } = await dbClient
+    .from("teacher_planner_state")
+    .upsert(payload, { onConflict: "user_id" });
+
+  cloudSaveInFlight = false;
+
+  if(error){
+    console.error("Cloud save error:", error);
+    setSyncState("error","Saved locally");
+    showCloudBanner("Cloud sync is unavailable right now. Your changes are still saved on this device.");
+  }else{
+    lastKnownCloudUpdatedAt = updatedAt;
+    setSyncState("synced","Synced");
+  }
+
+  if(cloudSaveQueued){
+    cloudSaveQueued = false;
+    performCloudSave();
+  }
+}
+async function loadCloudState({force=false} = {}){
+  if(!currentUser) return;
+  setSyncState("saving","Syncing…");
+
+  const { data, error } = await dbClient
+    .from("teacher_planner_state")
+    .select("planner_data, reminders_data, updated_at")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  if(error){
+    console.error("Cloud load error:", error);
+    setSyncState("error","Saved locally");
+    showCloudBanner("Could not reach the cloud. The planner is using the copy saved on this device.");
+    render();
+    return;
+  }
+
+  if(!data){
+    // First login for this account: migrate any existing local planner into the cloud.
+    markLocalUpdated();
+    await performCloudSave();
+    showCloudBanner(hasAnyLocalContent() ? "Your existing planner was moved to the cloud." : "Cloud planner created.");
+    render();
+    return;
+  }
+
+  const cloudMs = cloudUpdatedMillis(data.updated_at);
+  const localMs = localUpdatedMillis();
+
+  if(!force && localMs > cloudMs && hasAnyLocalContent()){
+    // This device has newer offline/local edits. Push them instead of overwriting.
+    await performCloudSave();
+    showCloudBanner("This device had newer changes, so they were synced to the cloud.");
+    render();
+    return;
+  }
+
+  plannerData = data.planner_data || {};
+  remindersData = data.reminders_data || {};
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(plannerData));
+  localStorage.setItem(REMINDER_KEY, JSON.stringify(remindersData));
+  localStorage.setItem(LOCAL_UPDATED_KEY, data.updated_at || new Date().toISOString());
+  lastKnownCloudUpdatedAt = data.updated_at || null;
+  setSyncState("synced","Synced");
+  render();
+}
 
 function normalizeLesson(raw={}){
   // Keeps compatibility with the first pilot if the user already typed something.
@@ -1498,6 +1810,109 @@ document.querySelectorAll(".quick-reminder").forEach(btn=>{
 $("closeReminderBtn").addEventListener("click",()=>reminderDialog.close());
 $("cancelReminderBtn").addEventListener("click",()=>reminderDialog.close());
 
+
+async function handleSignedIn(user){
+  currentUser = user;
+  $("authGate").classList.add("hidden");
+  $("accountEmail").textContent = user.email || "Signed in";
+  setSyncState("saving","Syncing…");
+  await loadCloudState();
+}
+async function handleSignedOut(){
+  currentUser = null;
+  $("accountEmail").textContent = "";
+  setSyncState("","Not signed in");
+  $("authGate").classList.remove("hidden");
+}
+async function initializeCloudAuth(){
+  if(!window.supabase){
+    $("authMessage").textContent = "Could not load the cloud library. Check your internet connection and reload.";
+    return;
+  }
+
+  const { data: { session }, error } = await dbClient.auth.getSession();
+  if(error){
+    console.error(error);
+    $("authMessage").textContent = error.message;
+  }
+  if(session?.user){
+    await handleSignedIn(session.user);
+  }else{
+    await handleSignedOut();
+  }
+
+  dbClient.auth.onAuthStateChange((event, session)=>{
+    if(event === "SIGNED_OUT"){
+      handleSignedOut();
+    }else if(session?.user && session.user.id !== currentUser?.id){
+      handleSignedIn(session.user);
+    }
+  });
+}
+
+async function signIn(){
+  const email = $("authEmail").value.trim();
+  const password = $("authPassword").value;
+  if(!email || !password){
+    $("authMessage").textContent = "Enter your email and password.";
+    return;
+  }
+  $("authMessage").textContent = "Signing in…";
+  const { data, error } = await dbClient.auth.signInWithPassword({ email, password });
+  if(error){
+    $("authMessage").textContent = error.message;
+    return;
+  }
+  $("authMessage").textContent = "";
+  if(data.user) await handleSignedIn(data.user);
+}
+
+async function signUp(){
+  const email = $("authEmail").value.trim();
+  const password = $("authPassword").value;
+  if(!email || password.length < 6){
+    $("authMessage").textContent = "Use a valid email and a password with at least 6 characters.";
+    return;
+  }
+  $("authMessage").textContent = "Creating your account…";
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { data, error } = await dbClient.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: redirectTo }
+  });
+  if(error){
+    $("authMessage").textContent = error.message;
+    return;
+  }
+  if(data.session?.user){
+    $("authMessage").textContent = "";
+    await handleSignedIn(data.session.user);
+  }else{
+    $("authMessage").textContent = "Account created. Check your email to confirm it, then come back and sign in.";
+  }
+}
+
+$("signInBtn").addEventListener("click", signIn);
+$("signUpBtn").addEventListener("click", signUp);
+$("authPassword").addEventListener("keydown",(e)=>{ if(e.key==="Enter") signIn(); });
+$("signOutBtn").addEventListener("click", async()=>{
+  setSyncState("saving","Signing out…");
+  await dbClient.auth.signOut();
+});
+$("syncNowBtn").addEventListener("click", async()=>{
+  if(!currentUser) return;
+  await loadCloudState({force:true});
+  showCloudBanner("Planner refreshed from the cloud.");
+});
+
+window.addEventListener("focus",()=>{
+  if(currentUser) loadCloudState();
+});
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState === "visible" && currentUser) loadCloudState();
+});
+
 $("monthTab").addEventListener("click",()=>setView("month"));
 $("weekTab").addEventListener("click",()=>setView("week"));
 $("planningTab").addEventListener("click",()=>setView("planning"));
@@ -1567,6 +1982,7 @@ $("importInput").addEventListener("change",async(e)=>{
 });
 
 setView("month");
+initializeCloudAuth();
 
 </script>
 </body>
