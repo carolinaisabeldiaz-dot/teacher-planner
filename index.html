@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f8f6f1" />
+  <title>Carolina's Teacher Planner</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ENGLISH TEACHER PLANNER</p>
+        <h1>Carolina's Planner</h1>
+        <p class="subtitle">Pilot · August–September 2026</p>
+      </div>
+
+      <div class="top-actions">
+        <button class="secondary-btn" id="todayBtn">Today</button>
+        <button class="secondary-btn" id="backupBtn">Backup</button>
+      </div>
+    </header>
+
+    <nav class="view-tabs" aria-label="Planner views">
+      <button id="monthTab" class="tab active">Monthly</button>
+      <button id="weekTab" class="tab">Weekly</button>
+      <button id="planningTab" class="tab">Plan this week</button>
+    </nav>
+
+    <main>
+      <section class="toolbar">
+        <button id="prevBtn" class="icon-btn" aria-label="Previous">←</button>
+        <div class="period-title-wrap">
+          <h2 id="periodTitle">August 2026</h2>
+          <p id="periodSubtitle">Tap a day to open that week.</p>
+        </div>
+        <button id="nextBtn" class="icon-btn" aria-label="Next">→</button>
+      </section>
+
+      <section id="monthView" class="view-section">
+        <div class="month-weekdays">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+        <div id="monthGrid" class="month-grid"></div>
+      </section>
+
+      <section id="weekView" class="view-section hidden">
+        <div id="weekGrid" class="week-grid"></div>
+      </section>
+
+      <section id="planningView" class="view-section hidden">
+        <div class="planning-header">
+          <div>
+            <h3>Plan this week</h3>
+            <p>Complete only the classes you need. Your timetable is already loaded.</p>
+          </div>
+          <div class="progress-chip" id="weekProgress">0 / 0 ready</div>
+        </div>
+        <div id="planningList" class="planning-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="lessonDialog">
+    <form method="dialog" id="lessonForm" class="lesson-form">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow" id="dialogDate">MONDAY 10 AUGUST</p>
+          <h3 id="dialogCourse">4th Grade B</h3>
+          <p id="dialogTime" class="muted">08:05–08:50 · 45 min</p>
+        </div>
+        <button type="button" class="icon-btn" id="closeDialogBtn" aria-label="Close">✕</button>
+      </div>
+
+      <input type="hidden" id="lessonKey" />
+
+      <div class="form-grid two">
+        <label>
+          Unit
+          <input id="unitInput" type="text" placeholder="Unit 3" />
+        </label>
+        <label>
+          Lesson title
+          <input id="titleInput" type="text" placeholder="Animal vocabulary" />
+        </label>
+      </div>
+
+      <label>
+        Objective
+        <textarea id="objectiveInput" rows="2" placeholder="Students will be able to..."></textarea>
+      </label>
+
+      <div class="form-grid two">
+        <label>
+          Student's Book
+          <input id="sbInput" type="text" placeholder="pp. 26–27" />
+        </label>
+        <label>
+          Workbook
+          <input id="wbInput" type="text" placeholder="p. 18" />
+        </label>
+      </div>
+
+      <label>
+        Canva / Slides
+        <input id="canvaInput" type="text" placeholder="Unit 3 · Lesson 1" />
+      </label>
+
+      <label>
+        Materials
+        <textarea id="materialsInput" rows="2" placeholder="Printed vocabulary, projector, notebook..."></textarea>
+      </label>
+
+      <label>
+        Lesson sequence
+        <textarea id="sequenceInput" rows="6" placeholder="5 min – Greeting&#10;10 min – Vocabulary&#10;15 min – Student's Book..."></textarea>
+      </label>
+
+      <div class="form-grid two">
+        <label>
+          Homework
+          <input id="homeworkInput" type="text" placeholder="Optional" />
+        </label>
+        <label>
+          Status
+          <select id="statusInput">
+            <option value="planned">Planned</option>
+            <option value="ready">Ready</option>
+            <option value="done">Done</option>
+            <option value="continue">Continue next class</option>
+            <option value="assessment">Assessment</option>
+          </select>
+        </label>
+      </div>
+
+      <label>
+        Notes
+        <textarea id="notesInput" rows="3" placeholder="What happened? What should continue next lesson?"></textarea>
+      </label>
+
+      <div class="dialog-actions">
+        <button type="button" class="secondary-btn" id="copyPrevBtn">Copy previous lesson</button>
+        <div class="action-spacer"></div>
+        <button type="button" class="secondary-btn danger" id="clearBtn">Clear</button>
+        <button type="submit" class="primary-btn" id="saveBtn">Save planning</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="backupDialog">
+    <div class="backup-panel">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">BACKUP & TRANSFER</p>
+          <h3>Move your planner between devices</h3>
+        </div>
+        <button type="button" class="icon-btn" id="closeBackupBtn">✕</button>
+      </div>
+      <p class="muted">
+        This pilot saves on the current device. Export a backup on one device and import it on another.
+        Cloud sync can be connected next with Firebase or Supabase.
+      </p>
+      <div class="backup-actions">
+        <button id="exportBtn" class="primary-btn">Export planner backup</button>
+        <label class="file-btn">
+          Import planner backup
+          <input type="file" id="importInput" accept="application/json" />
+        </label>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
