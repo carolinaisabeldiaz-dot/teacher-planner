@@ -1,39 +1,48 @@
-# Carolina's Teacher Planner — Pilot
+# Carolina's Teacher Planner — V2
 
-Pilot web planner for August–September 2026.
+Updated pilot for August–September 2026.
 
-## Included
-- Monthly calendar view
-- Weekly view
-- "Plan this week" workflow
-- Fixed school timetable
-- Editable lesson planning
-- Status: Planned / Ready / Done / Continue / Assessment
-- Copy previous lesson
-- iPad / phone responsive layout
-- Export / import backup JSON
+## Changes in V2
+- When a lesson is already planned, tapping the course opens a clean summary first.
+- Simplified planning fields:
+  - Objective
+  - Inicio
+  - Desarrollo
+  - Cierre
+  - Notes
+  - Status
+- A class can be marked as TEST / ASSESSMENT.
+- Tests are shown with a red badge/border in Monthly, Weekly and Plan this week.
+- Every weekday has a + Reminder button.
+- Day reminders can be checked off or deleted.
+- Monthly view shows how many active reminders each day has.
+- Existing data from V1 is preserved where possible.
 
-## Important: where data is saved
-This first pilot uses the browser's local storage.
+## Data storage in this version
+This V2 still uses local browser storage.
 
-That means:
-- It works immediately on GitHub Pages.
-- Changes made on one device do **not** automatically appear on another.
-- Use Backup > Export on one device and Backup > Import on the other as a temporary transfer method.
+So:
+- You can open the published page from an iPad and edit directly there.
+- The iPad will remember its own changes.
+- Mac and iPad do NOT automatically synchronize yet.
 
-## Next step: cloud sync
-To make Mac / iPad / phone stay automatically synchronized, connect the app to Firebase Firestore or Supabase.
+Use Backup > Export / Import if you need to move the planner between devices temporarily.
 
-That requires creating a free cloud project and adding its project credentials to the code. The interface itself is already structured for this upgrade.
+## Next step: automatic Mac + iPad + phone sync
+Connect Supabase:
+1. Create a Supabase project.
+2. Create an authenticated planner table with Row Level Security.
+3. Add the project URL and public anon key to the web app.
+4. Sign in with the same account on Mac / iPad / phone.
 
-## Publish on GitHub Pages
-1. Create a new GitHub repository, e.g. `teacher-planner`.
-2. Upload `index.html`, `styles.css`, and `app.js`.
-3. In repository Settings > Pages, choose the main branch as the source.
-4. Open the Pages URL from your iPad / phone.
-5. On iPad/iPhone Safari: Share > Add to Home Screen.
+After that, the same planner data can follow the signed-in user across devices.
 
-## Files
-- `index.html` — page structure
-- `styles.css` — responsive design
-- `app.js` — timetable, calendar, editing, storage
+## Update GitHub Pages
+Replace these three files in the existing `teacher-planner` repository:
+- `index.html`
+- `styles.css`
+- `app.js`
+
+You can leave README.md as-is or replace it too.
+
+GitHub Pages will redeploy automatically after the commit.

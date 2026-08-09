@@ -49,18 +49,24 @@ const blockedDates = {
 };
 
 const STORAGE_KEY = "carolina-teacher-planner-v1";
+const REMINDER_KEY = "carolina-teacher-planner-reminders-v1";
+
 let plannerData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+let remindersData = JSON.parse(localStorage.getItem(REMINDER_KEY) || "{}");
 
 let currentView = "month";
-let shownMonth = 7; // August
+let shownMonth = 7;
 let shownYear = 2026;
 let selectedWeekStart = mondayOf(new Date(2026, 7, 10));
+let currentSummaryContext = null;
 
 const $ = (id) => document.getElementById(id);
 const monthView = $("monthView");
 const weekView = $("weekView");
 const planningView = $("planningView");
 const lessonDialog = $("lessonDialog");
+const summaryDialog = $("summaryDialog");
+const reminderDialog = $("reminderDialog");
 const backupDialog = $("backupDialog");
 
 function pad(n){ return String(n).padStart(2,"0"); }
@@ -85,9 +91,26 @@ function gradeClass(course){
 }
 function itemKey(d,item){ return `${dateKey(d)}|${item.start}|${item.course}`; }
 function saveData(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(plannerData)); }
-function lessonData(d,item){ return plannerData[itemKey(d,item)] || {}; }
-function isPilotDate(d){
-  return d.getFullYear() === 2026 && (d.getMonth() === 7 || d.getMonth() === 8);
+function saveReminders(){ localStorage.setItem(REMINDER_KEY, JSON.stringify(remindersData)); }
+
+function normalizeLesson(raw={}){
+  // Keeps compatibility with the first pilot if the user already typed something.
+  return {
+    objective: raw.objective || "",
+    opening: raw.opening || "",
+    development: raw.development || raw.sequence || "",
+    closing: raw.closing || "",
+    status: raw.status === "assessment" ? "planned" : (raw.status || "planned"),
+    isTest: Boolean(raw.isTest || raw.status === "assessment"),
+    notes: raw.notes || "",
+    updatedAt: raw.updatedAt || ""
+  };
+}
+
+function lessonData(d,item){ return normalizeLesson(plannerData[itemKey(d,item)] || {}); }
+function hasPlanning(d,item){
+  const data=lessonData(d,item);
+  return Boolean(data.objective || data.opening || data.development || data.closing || data.notes || data.isTest || data.status !== "planned");
 }
 function isToday(d){
   const now = new Date();
@@ -96,8 +119,7 @@ function isToday(d){
 function durationLabel(start,end){
   const [sh,sm]=start.split(":").map(Number);
   const [eh,em]=end.split(":").map(Number);
-  const mins=(eh*60+em)-(sh*60+sm);
-  return `${mins} min`;
+  return `${(eh*60+em)-(sh*60+sm)} min`;
 }
 function getDaySchedule(d){
   const key = dateKey(d);
@@ -108,6 +130,8 @@ function getDaySchedule(d){
   if(jsDay === 0 || jsDay === 6) return [];
   return schedule[jsDay] || [];
 }
+function dayReminders(d){ return remindersData[dateKey(d)] || []; }
+function activeReminderCount(d){ return dayReminders(d).filter(r=>!r.done).length; }
 
 function setView(view){
   currentView = view;
@@ -147,11 +171,7 @@ function renderMonth(){
     if(isToday(d)) cell.classList.add("today");
 
     const items = getDaySchedule(d).filter(x=>x.type==="class" || x.blocked);
-    const plannedCount = items.filter(item => {
-      if(item.blocked) return false;
-      const data = lessonData(d,item);
-      return Boolean(data.title || data.objective || data.status);
-    }).length;
+    const plannedCount = items.filter(item => !item.blocked && hasPlanning(d,item)).length;
 
     const header = document.createElement("div");
     header.className = "day-number";
@@ -165,13 +185,21 @@ function renderMonth(){
         chip.textContent = "🎉 Anniversary";
       } else {
         const data = lessonData(d,item);
-        if(data.status==="assessment") chip.classList.add("assessment-chip");
+        if(data.isTest) chip.classList.add("assessment-chip");
         if(data.status==="done") chip.classList.add("done-chip");
         const short = item.course.replace("Grade","G");
-        chip.textContent = data.title ? `${short} · ${data.title}` : short;
+        chip.textContent = data.isTest ? `🔴 TEST · ${short}` : short;
       }
       cell.appendChild(chip);
     });
+
+    const reminderCount=activeReminderCount(d);
+    if(reminderCount){
+      const rem=document.createElement("span");
+      rem.className="class-chip reminder-chip";
+      rem.textContent=`🔔 ${reminderCount} reminder${reminderCount>1?"s":""}`;
+      cell.appendChild(rem);
+    }
 
     cell.addEventListener("click",()=>{
       selectedWeekStart = mondayOf(d);
@@ -189,9 +217,52 @@ function weekLabel(start){
   return `${start.getDate()} ${MONTHS[start.getMonth()]} – ${end.getDate()} ${MONTHS[end.getMonth()]} ${end.getFullYear()}`;
 }
 
+function renderReminderList(container,d){
+  const reminders=dayReminders(d);
+  if(!reminders.length) return;
+
+  const list=document.createElement("div");
+  list.className="reminder-list";
+
+  reminders.forEach((r,idx)=>{
+    const row=document.createElement("div");
+    row.className="reminder-row"+(r.done?" done":"");
+
+    const cb=document.createElement("input");
+    cb.type="checkbox";
+    cb.checked=Boolean(r.done);
+    cb.addEventListener("change",()=>{
+      remindersData[dateKey(d)][idx].done=cb.checked;
+      saveReminders();
+      render();
+    });
+
+    const text=document.createElement("div");
+    text.className="reminder-text";
+    text.textContent=r.text;
+
+    const del=document.createElement("button");
+    del.type="button";
+    del.className="reminder-delete";
+    del.textContent="✕";
+    del.setAttribute("aria-label","Delete reminder");
+    del.addEventListener("click",()=>{
+      remindersData[dateKey(d)].splice(idx,1);
+      if(!remindersData[dateKey(d)].length) delete remindersData[dateKey(d)];
+      saveReminders();
+      render();
+    });
+
+    row.append(cb,text,del);
+    list.appendChild(row);
+  });
+
+  container.appendChild(list);
+}
+
 function renderWeek(){
   $("periodTitle").textContent = `Week · ${weekLabel(selectedWeekStart)}`;
-  $("periodSubtitle").textContent = "Tap a class to view or edit the lesson plan.";
+  $("periodSubtitle").textContent = "Tap a class to see its plan. Add reminders at the top of each day.";
   const grid=$("weekGrid");
   grid.innerHTML="";
 
@@ -203,7 +274,20 @@ function renderWeek(){
 
     const head=document.createElement("div");
     head.className="week-day-header";
-    head.innerHTML=`<strong>${DAY_NAMES[i]}</strong><span>${d.getDate()} ${MONTHS[d.getMonth()]}</span>`;
+
+    const top=document.createElement("div");
+    top.className="week-day-top";
+    top.innerHTML=`<div><strong>${DAY_NAMES[i]}</strong><span>${d.getDate()} ${MONTHS[d.getMonth()]}</span></div>`;
+
+    const reminderBtn=document.createElement("button");
+    reminderBtn.type="button";
+    reminderBtn.className="reminder-add";
+    reminderBtn.textContent="+ Reminder";
+    reminderBtn.addEventListener("click",()=>openReminder(d));
+    top.appendChild(reminderBtn);
+
+    head.appendChild(top);
+    renderReminderList(head,d);
     col.appendChild(head);
 
     const items=getDaySchedule(d);
@@ -216,15 +300,22 @@ function renderWeek(){
       btn.type="button";
       btn.className="week-item";
       const data=item.blocked?{}:lessonData(d,item);
-      const status=data.status || "planned";
+
+      if(data.isTest) btn.classList.add("test-item");
+
       btn.innerHTML = `
+        ${data.isTest ? `<span class="test-mini-badge">TEST / ASSESSMENT</span>` : ""}
         <div class="time">${item.start ? item.start+"–"+item.end : "All day"}</div>
         <div class="name">${item.course}</div>
-        ${data.title ? `<div class="mini-title">${data.unit ? data.unit+" · " : ""}${data.title}</div>` : ""}
-        ${item.type==="class" ? `<span class="status-pill status-${status}">${statusLabel(status)}</span>` : ""}
+        ${item.type==="class" ? `<div class="mini-title">${hasPlanning(d,item) ? "Planning saved · tap to view" : "Tap to add planning"}</div>` : ""}
+        ${item.type==="class" ? `<span class="status-pill status-${data.status || "planned"}">${statusLabel(data.status || "planned")}</span>` : ""}
       `;
+
       if(item.type==="class" && !item.blocked){
-        btn.addEventListener("click",()=>openLesson(d,item));
+        btn.addEventListener("click",()=>{
+          if(hasPlanning(d,item)) openSummary(d,item);
+          else openLesson(d,item);
+        });
       } else {
         btn.disabled = true;
       }
@@ -240,8 +331,7 @@ function statusLabel(status){
     planned:"Planned",
     ready:"Ready",
     done:"Done",
-    continue:"Continue",
-    assessment:"Assessment"
+    continue:"Continue"
   }[status] || "Planned";
 }
 
@@ -257,43 +347,66 @@ function renderPlanning(){
     getDaySchedule(d).filter(x=>x.type==="class" && !x.blocked).forEach(item=>{
       total++;
       const data=lessonData(d,item);
-      if(["ready","done","assessment"].includes(data.status)) ready++;
+      if(["ready","done"].includes(data.status)) ready++;
 
       const row=document.createElement("div");
       row.className="plan-row";
+      if(data.isTest) row.classList.add("test-row");
       row.innerHTML=`
         <div class="plan-date">${DAY_NAMES[i]}<br>${d.getDate()} ${MONTHS[d.getMonth()]}</div>
         <div>
+          ${data.isTest ? `<span class="test-mini-badge">TEST / ASSESSMENT</span>` : ""}
           <div class="plan-course">${item.course}</div>
-          <div class="plan-meta">${item.start}–${item.end} · ${durationLabel(item.start,item.end)}${data.title ? " · "+data.title : ""}</div>
+          <div class="plan-meta">${item.start}–${item.end} · ${durationLabel(item.start,item.end)} · ${statusLabel(data.status)}</div>
         </div>
-        <button class="${data.title || data.objective ? "secondary-btn" : "primary-btn"}">${data.title || data.objective ? "Edit" : "Add planning"}</button>
+        <button class="${hasPlanning(d,item) ? "secondary-btn" : "primary-btn"}">${hasPlanning(d,item) ? "View" : "Add planning"}</button>
       `;
-      row.querySelector("button").addEventListener("click",()=>openLesson(d,item));
+      row.querySelector("button").addEventListener("click",()=>{
+        if(hasPlanning(d,item)) openSummary(d,item);
+        else openLesson(d,item);
+      });
       list.appendChild(row);
     });
   }
   $("weekProgress").textContent=`${ready} / ${total} ready`;
 }
 
+function openSummary(d,item){
+  const data=lessonData(d,item);
+  currentSummaryContext={d:new Date(d),item};
+
+  $("summaryDate").textContent=humanDate(d).toUpperCase();
+  $("summaryCourse").textContent=item.course;
+  $("summaryTime").textContent=`${item.start}–${item.end} · ${durationLabel(item.start,item.end)}`;
+  $("summaryObjective").textContent=data.objective || "—";
+  $("summaryOpening").textContent=data.opening || "—";
+  $("summaryDevelopment").textContent=data.development || "—";
+  $("summaryClosing").textContent=data.closing || "—";
+  $("summaryStatus").textContent=statusLabel(data.status);
+  $("summaryStatus").className=`status-pill status-${data.status}`;
+  $("summaryTestBadge").classList.toggle("hidden",!data.isTest);
+
+  const notesWrap=$("summaryNotesWrap");
+  notesWrap.classList.toggle("hidden",!data.notes);
+  $("summaryNotes").textContent=data.notes || "—";
+
+  summaryDialog.showModal();
+}
+
 function openLesson(d,item){
   const key=itemKey(d,item);
-  const data=plannerData[key] || {};
+  const data=lessonData(d,item);
 
   $("lessonKey").value=key;
   $("dialogDate").textContent=humanDate(d).toUpperCase();
   $("dialogCourse").textContent=item.course;
   $("dialogTime").textContent=`${item.start}–${item.end} · ${durationLabel(item.start,item.end)}`;
 
-  $("unitInput").value=data.unit || "";
-  $("titleInput").value=data.title || "";
+  $("testInput").checked=Boolean(data.isTest);
   $("objectiveInput").value=data.objective || "";
-  $("sbInput").value=data.sb || "";
-  $("wbInput").value=data.wb || "";
-  $("canvaInput").value=data.canva || "";
-  $("materialsInput").value=data.materials || "";
-  $("sequenceInput").value=data.sequence || "";
-  $("homeworkInput").value=data.homework || "";
+  $("openingInput").value=data.opening || "";
+  $("developmentInput").value=data.development || "";
+  $("closingInput").value=data.closing || "";
   $("statusInput").value=data.status || "planned";
   $("notesInput").value=data.notes || "";
 
@@ -304,16 +417,12 @@ $("lessonForm").addEventListener("submit",(e)=>{
   e.preventDefault();
   const key=$("lessonKey").value;
   plannerData[key]={
-    unit:$("unitInput").value.trim(),
-    title:$("titleInput").value.trim(),
     objective:$("objectiveInput").value.trim(),
-    sb:$("sbInput").value.trim(),
-    wb:$("wbInput").value.trim(),
-    canva:$("canvaInput").value.trim(),
-    materials:$("materialsInput").value.trim(),
-    sequence:$("sequenceInput").value.trim(),
-    homework:$("homeworkInput").value.trim(),
+    opening:$("openingInput").value.trim(),
+    development:$("developmentInput").value.trim(),
+    closing:$("closingInput").value.trim(),
     status:$("statusInput").value,
+    isTest:$("testInput").checked,
     notes:$("notesInput").value.trim(),
     updatedAt:new Date().toISOString()
   };
@@ -343,7 +452,7 @@ $("copyPrevBtn").addEventListener("click",()=>{
     const items=getDaySchedule(d).filter(x=>x.course===course && x.type==="class");
     if(items.length){
       const candidate=plannerData[itemKey(d,items[0])];
-      if(candidate){ found=candidate; break; }
+      if(candidate){ found=normalizeLesson(candidate); break; }
     }
   }
 
@@ -352,20 +461,54 @@ $("copyPrevBtn").addEventListener("click",()=>{
     return;
   }
 
-  $("unitInput").value=found.unit || "";
-  $("titleInput").value=found.title || "";
+  $("testInput").checked=false;
   $("objectiveInput").value=found.objective || "";
-  $("sbInput").value=found.sb || "";
-  $("wbInput").value=found.wb || "";
-  $("canvaInput").value=found.canva || "";
-  $("materialsInput").value=found.materials || "";
-  $("sequenceInput").value=found.sequence || "";
-  $("homeworkInput").value=found.homework || "";
+  $("openingInput").value=found.opening || "";
+  $("developmentInput").value=found.development || "";
+  $("closingInput").value=found.closing || "";
   $("notesInput").value=found.notes || "";
   $("statusInput").value="planned";
 });
 
+$("editFromSummaryBtn").addEventListener("click",()=>{
+  if(!currentSummaryContext) return;
+  const {d,item}=currentSummaryContext;
+  summaryDialog.close();
+  openLesson(d,item);
+});
+
+$("closeSummaryBtn").addEventListener("click",()=>summaryDialog.close());
+$("summaryCloseBtn").addEventListener("click",()=>summaryDialog.close());
 $("closeDialogBtn").addEventListener("click",()=>lessonDialog.close());
+
+function openReminder(d){
+  $("reminderDateKey").value=dateKey(d);
+  $("reminderDateTitle").textContent=d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
+  $("reminderTextInput").value="";
+  reminderDialog.showModal();
+  setTimeout(()=>$("reminderTextInput").focus(),50);
+}
+
+$("reminderForm").addEventListener("submit",(e)=>{
+  e.preventDefault();
+  const key=$("reminderDateKey").value;
+  const text=$("reminderTextInput").value.trim();
+  if(!text) return;
+  remindersData[key] = remindersData[key] || [];
+  remindersData[key].push({text,done:false,createdAt:new Date().toISOString()});
+  saveReminders();
+  reminderDialog.close();
+  render();
+});
+
+document.querySelectorAll(".quick-reminder").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    $("reminderTextInput").value=btn.dataset.prefix;
+    $("reminderTextInput").focus();
+  });
+});
+$("closeReminderBtn").addEventListener("click",()=>reminderDialog.close());
+$("cancelReminderBtn").addEventListener("click",()=>reminderDialog.close());
 
 $("monthTab").addEventListener("click",()=>setView("month"));
 $("weekTab").addEventListener("click",()=>setView("week"));
@@ -373,10 +516,7 @@ $("planningTab").addEventListener("click",()=>setView("planning"));
 
 $("prevBtn").addEventListener("click",()=>{
   if(currentView==="month"){
-    shownMonth--;
-    if(shownMonth<7 && shownYear===2026) shownMonth=8;
-    if(shownMonth<0){ shownMonth=11; shownYear--; }
-    if(shownYear!==2026 || ![7,8].includes(shownMonth)){ shownYear=2026; shownMonth=8; }
+    shownMonth = shownMonth===7 ? 8 : 7;
   }else{
     selectedWeekStart=addDays(selectedWeekStart,-7);
   }
@@ -384,10 +524,7 @@ $("prevBtn").addEventListener("click",()=>{
 });
 $("nextBtn").addEventListener("click",()=>{
   if(currentView==="month"){
-    shownMonth++;
-    if(shownMonth>8 && shownYear===2026) shownMonth=7;
-    if(shownMonth>11){ shownMonth=0; shownYear++; }
-    if(shownYear!==2026 || ![7,8].includes(shownMonth)){ shownYear=2026; shownMonth=7; }
+    shownMonth = shownMonth===7 ? 8 : 7;
   }else{
     selectedWeekStart=addDays(selectedWeekStart,7);
   }
@@ -409,9 +546,10 @@ $("closeBackupBtn").addEventListener("click",()=>backupDialog.close());
 $("exportBtn").addEventListener("click",()=>{
   const payload={
     app:"Carolina Teacher Planner",
-    version:1,
+    version:2,
     exportedAt:new Date().toISOString(),
-    data:plannerData
+    data:plannerData,
+    reminders:remindersData
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
@@ -427,10 +565,10 @@ $("importInput").addEventListener("change",async(e)=>{
   if(!file) return;
   try{
     const parsed=JSON.parse(await file.text());
-    const incoming=parsed.data || parsed;
-    if(typeof incoming!=="object" || Array.isArray(incoming)) throw new Error("Invalid backup");
-    plannerData=incoming;
+    plannerData=parsed.data || {};
+    remindersData=parsed.reminders || {};
     saveData();
+    saveReminders();
     backupDialog.close();
     render();
     alert("Planner backup imported successfully.");
